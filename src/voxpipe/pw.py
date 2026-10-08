@@ -199,6 +199,11 @@ def open_playback(node: Node) -> subprocess.Popen:
 
 def terminate(*processes) -> None:
     for process in processes:
+        if isinstance(process, subprocess.Popen) and process.stdin is not None:
+            try:
+                process.stdin.close()  # flush errors from a dead reader are expected here
+            except OSError:
+                pass
         if process.poll() is None:
             process.terminate()
     for process in processes:
