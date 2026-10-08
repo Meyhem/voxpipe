@@ -8,16 +8,17 @@ from voxpipe.engine.effects.gain import Gain
 from voxpipe.engine.effects.modulation import Chorus, RingMod
 from voxpipe.engine.effects.pitch import PitchShift
 from voxpipe.engine.effects.resonators import Comb, Reverb
+from voxpipe.engine.effects.vocoder import Vocoder
 from voxpipe.engine.entry import ChainEntry
 
 EFFECTS: dict[str, type[Effect]] = {
     cls.name: cls
-    for cls in (Gain, PitchShift, Filter, Eq, RingMod, Comb, Distortion, Chorus, Reverb)
+    for cls in (Gain, PitchShift, Filter, Eq, Vocoder, RingMod, Comb, Distortion, Chorus, Reverb)
 }
 
 # The chain order `tune` always emits (tech spec section 5). Gain appears twice: input and output.
 TUNING_CHAIN: tuple[str, ...] = (
-    "gain", "pitch_shift", "filter", "eq", "ring_mod",
+    "gain", "pitch_shift", "filter", "eq", "vocoder", "ring_mod",
     "comb", "distortion", "chorus", "reverb", "gain",
 )
 
