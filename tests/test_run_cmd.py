@@ -72,12 +72,26 @@ def test_same_source_and_destination_refused(system, capsys):
     assert "capture" not in system["processes"]
 
 
-def test_missing_virtual_mic_hint(system, capsys):
+@pytest.mark.parametrize("destination", ["voxpipe.virtual_mic", "voxpipe virtual microphone"])
+def test_missing_virtual_mic_is_created(system, monkeypatch, capsys, destination):
     system["nodes"] = [Node(*MIC), Node(*SPEAKERS)]
-    code = main(["run", "--source", "57", "--destination", "voxpipe.virtual_mic",
-                 "--profile", str(FIXTURE)])
+
+    def create():
+        system["nodes"].append(Node(*VIRTUAL))
+        return Node(*VIRTUAL), True
+
+    monkeypatch.setattr(pw, "create_virtual_mic", create)
+    main(["run", "--source", "57", "--destination", destination, "--profile", str(FIXTURE)])
+    assert system["playback_target"].id == 120
+    assert "created virtual microphone (id 120)" in capsys.readouterr().err
+
+
+def test_unknown_destination_is_not_created(system, monkeypatch, capsys):
+    system["nodes"] = [Node(*MIC), Node(*SPEAKERS)]
+    monkeypatch.setattr(pw, "create_virtual_mic", lambda: pytest.fail("must not create"))
+    code = main(["run", "--source", "57", "--destination", "999", "--profile", str(FIXTURE)])
     assert code == 1
-    assert "voxpipe create" in capsys.readouterr().err
+    assert "voxpipe list" in capsys.readouterr().err
 
 
 def test_bad_profile_fails_before_audio(system, tmp_path, capsys):

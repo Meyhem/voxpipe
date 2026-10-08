@@ -99,7 +99,7 @@ The CLI also makes the audio setup easy: listing microphones, creating the virtu
 
 ### B. Set up and run
 1. **List** — user lists microphones and sees their identifiers.
-2. **Create** — user creates the virtual microphone (once per boot; if one already exists, it is reused).
+2. **Create** — user creates the virtual microphone (once per boot; if one already exists, it is reused). Optional: `run` creates it when it is missing (R-27).
 3. **Run** — user starts the effect loop, naming the source, the destination, and the profile.
 4. In Telegram (or any app), the user picks the virtual microphone as input.
 5. User stops the loop when done.
@@ -154,13 +154,14 @@ Confirmed by the user:
 - **R-24** — When `tune` writes a profile whose name already exists, it overwrites it. *(hard)*
 - **R-25** — Profiles are read from and written to the current working directory by default. *(hard)*
 - **R-26** — Every path the CLI uses (samples folder, profiles location, render input and output) can be set by the user; the current working directory is the default. *(hard)*
+- **R-27** — When `run`'s destination names the virtual microphone and it does not exist, `run` creates it (as `create` would) instead of failing. *(hard — added 2026-10-08 at the user's request)*
 
 ---
 
 ## 9. Edge cases and exceptions
 
 - Source microphone is unplugged while the loop runs → loop stops (R-20).
-- `run` is started before the virtual microphone exists → tell the user to run `create`.
+- `run` is started before the virtual microphone exists, with the virtual microphone as destination → `run` creates it first (R-27). Any other unknown destination is an error.
 - The virtual microphone is removed (`clean`) while the loop or an app is still using it → it is removed anyway (R-18); the running loop then loses its destination (A-07).
 - Samples folder is empty or contains only incomplete pairs.
 - Sample recordings in different formats or sample rates.

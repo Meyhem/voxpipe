@@ -30,12 +30,13 @@ def register(subparsers) -> None:
 def _resolve_devices(source_arg: str, destination_arg: str) -> tuple[Node, Node]:
     nodes = pw.list_nodes()
     source = pw.resolve(source_arg, nodes)
-    try:
-        destination = pw.resolve(destination_arg, nodes)
-    except DeviceError as exc:
-        if pw.find_virtual_mic(nodes) is None:
-            raise DeviceError(f"{exc}; virtual microphone not found, run `voxpipe create`") from None
-        raise
+    if destination_arg in (pw.VIRTUAL_MIC_NAME, pw.VIRTUAL_MIC_DESCRIPTION) and (
+        pw.find_virtual_mic(nodes) is None
+    ):
+        node, _ = pw.create_virtual_mic()
+        print(f"created virtual microphone (id {node.id})", file=sys.stderr)
+        nodes = pw.list_nodes()
+    destination = pw.resolve(destination_arg, nodes)
     if source.id == destination.id:
         raise DeviceError("source and destination are the same device (would feed back)")
     return source, destination
