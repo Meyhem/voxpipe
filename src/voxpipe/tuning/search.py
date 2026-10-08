@@ -6,16 +6,20 @@ import multiprocessing
 import os
 import signal
 import time
+import warnings
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
-import cma
 import numpy as np
 
 from voxpipe.engine.entry import ChainEntry
 from voxpipe.engine.registry import default_entries
 from voxpipe.tuning.objective import PairData, chain_distance, similarity
 from voxpipe.tuning.space import ParamSpace
+
+with warnings.catch_warnings():
+    warnings.filterwarnings("ignore", message="Could not import matplotlib")
+    import cma
 
 POPULATION = 24  # fixed, never derived from CPU count, so results are machine-independent
 SIGMA0 = 0.25
