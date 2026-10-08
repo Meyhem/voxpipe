@@ -1,0 +1,149 @@
+[
+ {
+  "id": 29,
+  "type": "PipeWire:Interface:Node",
+  "info": {
+   "props": {
+    "node.name": "Dummy-Driver"
+   }
+  }
+ },
+ {
+  "id": 30,
+  "type": "PipeWire:Interface:Node",
+  "info": {
+   "props": {
+    "node.name": "Freewheel-Driver"
+   }
+  }
+ },
+ {
+  "id": 37,
+  "type": "PipeWire:Interface:Node",
+  "info": {
+   "props": {
+    "node.name": "Midi-Bridge",
+    "media.class": "Midi/Bridge"
+   }
+  }
+ },
+ {
+  "id": 50,
+  "type": "PipeWire:Interface:Node",
+  "info": {
+   "props": {
+    "node.name": "v4l2_input.pci-0000_0a_00.0-usb-0_9_1.0",
+    "node.description": "Brio 100 (V4L2)",
+    "media.class": "Video/Source"
+   }
+  }
+ },
+ {
+  "id": 56,
+  "type": "PipeWire:Interface:Node",
+  "info": {
+   "props": {
+    "node.name": "alsa_output.usb-Kingston_HyperX_Virtual_Surround_Sound_00000000-00.analog-stereo",
+    "node.description": "HyperX 7.1 Audio Analog Stereo",
+    "media.class": "Audio/Sink"
+   }
+  }
+ },
+ {
+  "id": 57,
+  "type": "PipeWire:Interface:Node",
+  "info": {
+   "props": {
+    "node.name": "alsa_input.usb-Kingston_HyperX_Virtual_Surround_Sound_00000000-00.analog-stereo",
+    "node.description": "HyperX 7.1 Audio Analog Stereo",
+    "media.class": "Audio/Source"
+   }
+  }
+ },
+ {
+  "id": 58,
+  "type": "PipeWire:Interface:Node",
+  "info": {
+   "props": {
+    "node.name": "alsa_output.usb-Generic_USB_Audio-00.HiFi__hw_Audio_2__sink",
+    "node.description": "USB Audio S/PDIF Output",
+    "media.class": "Audio/Sink"
+   }
+  }
+ },
+ {
+  "id": 59,
+  "type": "PipeWire:Interface:Node",
+  "info": {
+   "props": {
+    "node.name": "alsa_output.usb-Generic_USB_Audio-00.HiFi__hw_Audio_1__sink",
+    "node.description": "USB Audio Front Headphones",
+    "media.class": "Audio/Sink"
+   }
+  }
+ },
+ {
+  "id": 60,
+  "type": "PipeWire:Interface:Node",
+  "info": {
+   "props": {
+    "node.name": "alsa_output.usb-Generic_USB_Audio-00.HiFi__hw_Audio__sink",
+    "node.description": "USB Audio Speakers",
+    "media.class": "Audio/Sink"
+   }
+  }
+ },
+ {
+  "id": 61,
+  "type": "PipeWire:Interface:Node",
+  "info": {
+   "props": {
+    "node.name": "alsa_input.usb-Generic_USB_Audio-00.HiFi__hw_Audio_2__source",
+    "node.description": "USB Audio Microphone",
+    "media.class": "Audio/Source"
+   }
+  }
+ },
+ {
+  "id": 62,
+  "type": "PipeWire:Interface:Node",
+  "info": {
+   "props": {
+    "node.name": "alsa_input.usb-Generic_USB_Audio-00.HiFi__hw_Audio_1__source",
+    "node.description": "USB Audio Line Input",
+    "media.class": "Audio/Source"
+   }
+  }
+ },
+ {
+  "id": 33,
+  "type": "PipeWire:Interface:Node",
+  "info": {
+   "props": {
+    "node.name": "alsa_input.usb-046d_Brio_100_2605AP6LZZJ8-02.mono-fallback",
+    "node.description": "Brio 100 Mono",
+    "media.class": "Audio/Source"
+   }
+  }
+ },
+ {
+  "id": 98,
+  "type": "PipeWire:Interface:Node",
+  "info": {
+   "props": {
+    "node.name": "speech-dispatcher-dummy",
+    "media.class": "Stream/Output/Audio"
+   }
+  }
+ },
+ {
+  "id": 95,
+  "type": "PipeWire:Interface:Node",
+  "info": {
+   "props": {
+    "node.name": "Firefox",
+    "media.class": "Stream/Output/Audio"
+   }
+  }
+ }
+]
