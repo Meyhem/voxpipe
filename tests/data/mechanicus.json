@@ -20,6 +20,13 @@
       }
     },
     {
+      "effect": "gate",
+      "params": {
+        "threshold_db": -55.0,
+        "release_ms": 40.0
+      }
+    },
+    {
       "effect": "pitch_shift",
       "params": {
         "semitones": -4.0,

@@ -10,7 +10,7 @@ from voxpipe.engine.registry import EFFECTS, TUNING_CHAIN, create_effect, defaul
 def test_registry_contains_every_effect():
     assert set(EFFECTS) == {
         "gain", "pitch_shift", "filter", "eq", "ring_mod",
-        "comb", "distortion", "chorus", "reverb", "vocoder",
+        "comb", "distortion", "chorus", "reverb", "vocoder", "gate",
     }
     assert all(name in EFFECTS for name in TUNING_CHAIN)
 

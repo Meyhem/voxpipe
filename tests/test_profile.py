@@ -71,9 +71,9 @@ def test_missing_param_names_field(data):
 
 
 def test_out_of_range_names_field(data):
-    data["chain"][5]["params"]["freq_hz"] = 5000.0
+    data["chain"][6]["params"]["freq_hz"] = 5000.0
     message = error_for(data)
-    assert "profile.chain[5].params.freq_hz" in message
+    assert "profile.chain[6].params.freq_hz" in message
     assert "maximum" in message
 
 

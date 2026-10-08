@@ -8,7 +8,7 @@ from voxpipe.tuning.space import ParamSpace
 def test_size_counts_every_parameter():
     template = default_entries()
     expected = sum(len(EFFECTS[e.effect].params) for e in template)
-    assert ParamSpace(template).size == expected == 31
+    assert ParamSpace(template).size == expected == 33
 
 
 def test_round_trip_defaults():
