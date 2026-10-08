@@ -33,3 +33,4 @@ ignore = ["E501"]  # line length is left to `ruff format`
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+filterwarnings = ["ignore:Could not import matplotlib"]
