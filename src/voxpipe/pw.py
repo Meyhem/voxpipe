@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
@@ -87,3 +88,40 @@ def resolve(identifier: str, nodes: Sequence[Node]) -> Node:
     if not matches:
         raise DeviceError(f"no audio device matches '{identifier}'; see `voxpipe list`")
     return matches[0]
+
+
+_CREATE_PROPS = (
+    "{ factory.name=support.null-audio-sink "
+    f"node.name={VIRTUAL_MIC_NAME} "
+    f'node.description="{VIRTUAL_MIC_DESCRIPTION}" '
+    "media.class=Audio/Source/Virtual object.linger=true "
+    "audio.position=[ MONO ] audio.rate=48000 }"
+)
+
+
+def create_virtual_mic(
+    runner: Runner | None = None,
+    wait_s: float = 2.0,
+    sleep: Callable[[float], None] = time.sleep,
+) -> tuple[Node, bool]:
+    """R-13, R-17: reuse the one virtual mic, or create it and wait until it appears."""
+    existing = find_virtual_mic(list_nodes(runner))
+    if existing is not None:
+        return existing, False
+    (runner or run_tool)(["pw-cli", "create-node", "adapter", _CREATE_PROPS])
+    interval = 0.1
+    for _ in range(max(1, int(wait_s / interval))):
+        node = find_virtual_mic(list_nodes(runner))
+        if node is not None:
+            return node, True
+        sleep(interval)
+    raise DeviceError("virtual microphone did not appear after creation")
+
+
+def remove_virtual_mic(runner: Runner | None = None) -> Node | None:
+    """R-18: removes the virtual mic even while it is in use."""
+    node = find_virtual_mic(list_nodes(runner))
+    if node is None:
+        return None
+    (runner or run_tool)(["pw-cli", "destroy", str(node.id)])
+    return node
