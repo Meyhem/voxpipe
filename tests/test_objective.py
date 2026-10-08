@@ -10,6 +10,7 @@ from voxpipe.media import write_wav
 from voxpipe.tuning.objective import (
     chain_distance,
     pair_distance,
+    pitch_distance,
     prepare_pair,
     prepare_pair_from_arrays,
     similarity,
@@ -62,3 +63,19 @@ def test_prepare_pair_warns_on_length_mismatch(tmp_path):
     data, warnings = prepare_pair(pair)
     assert data.id == "a" and data.reference.size == 96_000
     assert len(warnings) == 1 and "50%" in warnings[0]
+
+
+def test_pitch_distance_penalises_dropped_voicing():
+    # The tuner must not win by destroying pitch: an unvoiced frame where the target is
+    # voiced costs as much as a full octave error.
+    target = np.array([100.0, 100.0, 100.0, 0.0])
+    assert pitch_distance(target, target) == 0.0
+    assert pitch_distance(np.zeros(4), target) == pytest.approx(1.0)
+    assert pitch_distance(np.array([400.0, 400.0, 400.0, 0.0]), target) == pytest.approx(1.0)
+    assert pitch_distance(np.array([100.0, 100.0, 100.0, 100.0]), target) == pytest.approx(0.5)
+
+
+def test_objective_version_bumped():
+    from voxpipe.tuning.objective import OBJECTIVE_VERSION
+
+    assert OBJECTIVE_VERSION == 2

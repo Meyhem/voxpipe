@@ -44,3 +44,13 @@ def test_ltas_is_mean_over_frames():
 
 def test_hop_is_10ms():
     assert HOP == 480
+
+
+def test_low_pitch_is_detected():
+    # Biased autocorrelation decays with lag and used to miss low (machine-like) voices.
+    tone = sum(sine(65.0 * k, amplitude=0.3 / k) for k in range(1, 8))
+    noisy = tone + np.random.default_rng(0).normal(0.0, 0.15, tone.size)
+    f0 = pitch(noisy.astype(np.float32))
+    voiced = f0[f0 > 0]
+    assert voiced.size > 0.8 * f0.size
+    assert abs(np.median(voiced) - 65.0) < 3.0

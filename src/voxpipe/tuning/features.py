@@ -68,7 +68,14 @@ def pitch(signal: np.ndarray) -> np.ndarray:
     autocorr = np.fft.irfft(power, axis=1)[:, :PITCH_FRAME]
     lag_min = int(SAMPLE_RATE / PITCH_MAX_HZ)
     lag_max = int(SAMPLE_RATE / PITCH_MIN_HZ)
-    normalised = autocorr[:, lag_min : lag_max + 1] / np.maximum(autocorr[:, :1], 1e-12)
+    lags = np.arange(lag_min, lag_max + 1)
+    # Unbiased: undo the (N - lag) / N decay of zero-padded autocorrelation, which
+    # otherwise hides low (e.g. machine-like ~65-100 Hz) voices below the threshold.
+    normalised = (
+        autocorr[:, lag_min : lag_max + 1]
+        / np.maximum(autocorr[:, :1], 1e-12)
+        * (PITCH_FRAME / (PITCH_FRAME - lags))
+    )
     best = np.argmax(normalised, axis=1)
     strength = normalised[np.arange(best.size), best]
     voiced = (strength > VOICING_THRESHOLD) & (loudness > SILENCE_RMS)

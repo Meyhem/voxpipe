@@ -14,7 +14,7 @@ from voxpipe.tuning.align import cosine_cost, dtw_path
 from voxpipe.tuning.features import log_mel, ltas, pitch
 from voxpipe.tuning.samples import SamplePair
 
-OBJECTIVE_VERSION = 1  # bump whenever scoring changes; stored in profile provenance
+OBJECTIVE_VERSION = 2  # bump whenever scoring changes; stored in profile provenance
 LENGTH_MISMATCH_TOLERANCE = 0.30  # R-12 (A-03)
 W_MEL, W_PITCH, W_LTAS = 1.0, 0.5, 0.5
 DB_UNIT = 10.0  # spectral distances are measured in units of 10 dB
@@ -62,17 +62,26 @@ def pair_distance(processed: np.ndarray, data: PairData) -> float:
     mel = log_mel(processed)
     d_mel = np.mean(np.abs(mel[data.path_ref] - data.target_mel[data.path_tgt])) / DB_UNIT
 
-    f0_proc = pitch(processed)[data.path_ref]
-    f0_tgt = data.target_f0[data.path_tgt]
-    voiced_proc, voiced_tgt = f0_proc > 0, f0_tgt > 0
-    both = voiced_proc & voiced_tgt
-    octaves = (
-        np.mean(np.abs(np.log2(f0_proc[both] / f0_tgt[both]))) if both.any() else 0.0
-    )
-    d_pitch = octaves + np.mean(voiced_proc != voiced_tgt)
+    d_pitch = pitch_distance(pitch(processed)[data.path_ref], data.target_f0[data.path_tgt])
 
     d_ltas = np.mean(np.abs(ltas(mel[data.path_ref]) - data.target_ltas)) / DB_UNIT
     return float(W_MEL * d_mel + W_PITCH * d_pitch + W_LTAS * d_ltas)
+
+
+def pitch_distance(f0_proc: np.ndarray, f0_tgt: np.ndarray) -> float:
+    """Aligned pitch contours (0 = unvoiced) -> distance in octaves.
+
+    Where the target is voiced, each frame costs its octave error (capped at 1); an
+    unvoiced processed frame costs the full 1, so destroying pitch never pays. Where the
+    target is unvoiced, a voiced processed frame costs 0.5."""
+    voiced_proc, voiced_tgt = f0_proc > 0, f0_tgt > 0
+    on_voiced = 0.0
+    if voiced_tgt.any():
+        safe_proc = np.where(voiced_proc, f0_proc, 1.0)
+        octaves = np.minimum(np.abs(np.log2(safe_proc / np.where(voiced_tgt, f0_tgt, 1.0))), 1.0)
+        on_voiced = float(np.mean(np.where(voiced_proc, octaves, 1.0)[voiced_tgt]))
+    on_unvoiced = float(np.mean(voiced_proc[~voiced_tgt])) if (~voiced_tgt).any() else 0.0
+    return on_voiced + 0.5 * on_unvoiced
 
 
 def _compensate_latency(processed: np.ndarray, latency: int) -> np.ndarray:

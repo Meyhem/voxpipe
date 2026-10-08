@@ -10,6 +10,7 @@ from voxpipe.engine.registry import TUNING_CHAIN
 from voxpipe.media import write_wav
 from voxpipe.profile import load_profile
 from voxpipe.tuning import search
+from voxpipe.tuning.objective import OBJECTIVE_VERSION
 
 pytestmark = pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg not installed")
 
@@ -40,7 +41,7 @@ def test_tune_saves_valid_profile(samples, tmp_path, capsys):
     assert profile.name == "robot"
     assert [e.effect for e in profile.chain] == list(TUNING_CHAIN)
     prov = profile.provenance
-    assert prov.pairs == ("01",) and prov.seed == 1 and prov.objective_version == 1
+    assert prov.pairs == ("01",) and prov.seed == 1 and prov.objective_version == OBJECTIVE_VERSION
     assert prov.partial is False and 0 < prov.score <= 100
     err = capsys.readouterr().err
     assert "skipping pair '02'" in err
