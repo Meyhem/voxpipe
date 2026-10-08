@@ -1,7 +1,16 @@
 import numpy as np
 
 from helpers import sine, voice_like
-from voxpipe.tuning.features import HOP, N_MELS, frame_count, frames, log_mel, ltas, pitch
+from voxpipe.tuning.features import (
+    HOP,
+    N_MELS,
+    frame_count,
+    frames,
+    log_mel,
+    ltas,
+    pitch,
+    speech_frames,
+)
 
 
 def test_frame_count_and_padding():
@@ -54,3 +63,21 @@ def test_low_pitch_is_detected():
     voiced = f0[f0 > 0]
     assert voiced.size > 0.8 * f0.size
     assert abs(np.median(voiced) - 65.0) < 3.0
+
+
+def test_speech_frames_separate_speech_from_background():
+    rng = np.random.default_rng(0)
+    voice = voice_like(0.5)
+    background = rng.normal(0.0, 0.01, voice.size).astype(np.float32)  # about -40 dB
+    signal = np.concatenate([background, voice + background, background])
+    active = speech_frames(signal)
+    third = active.size // 3
+    assert not active[5 : third - 5].any()
+    assert active[third + 5 : 2 * third - 5].all()
+    assert not active[2 * third + 5 :].any()
+
+
+def test_speech_frames_on_clean_recording():
+    signal = np.concatenate([np.zeros(24_000, dtype=np.float32), voice_like(0.5)])
+    active = speech_frames(signal)
+    assert not active[:45].any() and active[55:].all()

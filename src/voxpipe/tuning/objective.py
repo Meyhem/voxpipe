@@ -11,12 +11,12 @@ from voxpipe.engine.chain import Chain
 from voxpipe.engine.entry import ChainEntry
 from voxpipe.media import decode
 from voxpipe.tuning.align import cosine_cost, dtw_path
-from voxpipe.tuning.features import log_mel, ltas, pitch
+from voxpipe.tuning.features import frame_db, log_mel, ltas, pitch, speech_frames
 from voxpipe.tuning.samples import SamplePair
 
-OBJECTIVE_VERSION = 2  # bump whenever scoring changes; stored in profile provenance
+OBJECTIVE_VERSION = 3  # bump whenever scoring changes; stored in profile provenance
 LENGTH_MISMATCH_TOLERANCE = 0.30  # R-12 (A-03)
-W_MEL, W_PITCH, W_LTAS = 1.0, 0.5, 0.5
+W_MEL, W_PITCH, W_LTAS, W_FLOOR = 1.0, 0.5, 0.5, 0.5
 DB_UNIT = 10.0  # spectral distances are measured in units of 10 dB
 
 
@@ -24,25 +24,35 @@ DB_UNIT = 10.0  # spectral distances are measured in units of 10 dB
 class PairData:
     id: str
     reference: np.ndarray
-    path_ref: np.ndarray
+    path_ref: np.ndarray  # aligned frame pairs where the target holds speech
     path_tgt: np.ndarray
+    reference_db: np.ndarray
+    reference_speech: np.ndarray
     target_mel: np.ndarray
     target_f0: np.ndarray
     target_ltas: np.ndarray
 
 
 def prepare_pair_from_arrays(pair_id: str, reference: np.ndarray, target: np.ndarray) -> PairData:
-    """Align once on the unprocessed reference; effects do not change timing."""
+    """Align once on the unprocessed reference; effects do not change timing.
+
+    Only aligned frames where the target holds speech are scored, so a background bed
+    in the target (noise, hum, room) is not something the tuner tries to recreate."""
     ref_mel, tgt_mel = log_mel(reference), log_mel(target)
     path_ref, path_tgt = dtw_path(cosine_cost(ref_mel, tgt_mel))
+    speech = speech_frames(target)[path_tgt]
+    if speech.any():
+        path_ref, path_tgt = path_ref[speech], path_tgt[speech]
     return PairData(
         id=pair_id,
         reference=np.asarray(reference, dtype=np.float32),
         path_ref=path_ref,
         path_tgt=path_tgt,
+        reference_db=frame_db(reference),
+        reference_speech=speech_frames(reference),
         target_mel=tgt_mel,
         target_f0=pitch(target),
-        target_ltas=ltas(tgt_mel[path_tgt]),  # over aligned frames: unequal silence must not bias it
+        target_ltas=ltas(tgt_mel[path_tgt]),
     )
 
 
@@ -65,7 +75,20 @@ def pair_distance(processed: np.ndarray, data: PairData) -> float:
     d_pitch = pitch_distance(pitch(processed)[data.path_ref], data.target_f0[data.path_tgt])
 
     d_ltas = np.mean(np.abs(ltas(mel[data.path_ref]) - data.target_ltas)) / DB_UNIT
-    return float(W_MEL * d_mel + W_PITCH * d_pitch + W_LTAS * d_ltas)
+    return float(
+        W_MEL * d_mel + W_PITCH * d_pitch + W_LTAS * d_ltas + W_FLOOR * floor_lift(processed, data)
+    )
+
+
+def floor_lift(processed: np.ndarray, data: PairData) -> float:
+    """How much the chain raised the reference's pauses relative to its speech, in units
+    of 10 dB. Uniform gain costs nothing; drive or compression that turns mic hiss into
+    static does."""
+    speech = data.reference_speech
+    if speech.all() or not speech.any():
+        return 0.0
+    lift = frame_db(processed)[: speech.size] - data.reference_db
+    return max(0.0, float(np.mean(lift[~speech]) - np.mean(lift[speech]))) / DB_UNIT
 
 
 def pitch_distance(f0_proc: np.ndarray, f0_tgt: np.ndarray) -> float:

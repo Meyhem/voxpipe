@@ -9,6 +9,7 @@ from voxpipe.engine.registry import default_entries
 from voxpipe.media import write_wav
 from voxpipe.tuning.objective import (
     chain_distance,
+    floor_lift,
     pair_distance,
     pitch_distance,
     prepare_pair,
@@ -78,4 +79,29 @@ def test_pitch_distance_penalises_dropped_voicing():
 def test_objective_version_bumped():
     from voxpipe.tuning.objective import OBJECTIVE_VERSION
 
-    assert OBJECTIVE_VERSION == 2
+    assert OBJECTIVE_VERSION == 3
+
+
+def _with_pauses(voice: np.ndarray, floor: float, seed: int = 0) -> np.ndarray:
+    pause = np.zeros(14_400, dtype=np.float32)
+    signal = np.concatenate([pause, voice, pause])
+    return signal + np.random.default_rng(seed).normal(0.0, floor, signal.size).astype(np.float32)
+
+
+def test_target_background_is_not_rewarded():
+    # A target with a loud background bed must not teach the tuner to fill pauses with
+    # noise: the clean reference beats the reference with the same bed added.
+    voice = voice_like(1.0)
+    reference = _with_pauses(voice, 3e-4)  # clean mic, about -70 dB floor
+    target = _with_pauses(voice, 0.015, seed=1)  # background at about -36 dB
+    data = prepare_pair_from_arrays("a", reference, target)
+    noisy = reference + np.random.default_rng(2).normal(0.0, 0.015, reference.size).astype(np.float32)
+    assert pair_distance(reference, data) < pair_distance(noisy, data)
+
+
+def test_floor_lift_ignores_uniform_gain_but_catches_compression():
+    reference = _with_pauses(voice_like(1.0), 3e-4)
+    data = prepare_pair_from_arrays("a", reference, reference)
+    assert floor_lift(reference * np.float32(4.0), data) < 0.05
+    compressed = np.tanh(reference * np.float32(300.0)).astype(np.float32)  # lifts pauses
+    assert floor_lift(compressed, data) > 1.0

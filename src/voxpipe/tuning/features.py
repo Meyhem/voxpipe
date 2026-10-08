@@ -82,5 +82,25 @@ def pitch(signal: np.ndarray) -> np.ndarray:
     return np.where(voiced, SAMPLE_RATE / (best + lag_min), 0.0)
 
 
+def frame_db(signal: np.ndarray) -> np.ndarray:
+    """RMS level of each 10 ms frame in dB, floored at -100 dB."""
+    return 10.0 * np.log10(np.mean(frames(signal, HOP) ** 2, axis=1) + 1e-10)
+
+
+SPEECH_ABOVE_FLOOR_DB = 10.0  # speech is at least this far above the background
+SPEECH_BELOW_PEAK_DB = 35.0  # ...and within this range of the loud frames
+
+
+def speech_frames(signal: np.ndarray) -> np.ndarray:
+    """True for frames that hold speech rather than background (pauses, noise bed).
+
+    The background level is the 10th percentile of frame levels and the speech level the
+    95th, so this works for a clean mic (-70 dB pauses) and for a target with a loud
+    background bed (-35 dB) alike."""
+    db = frame_db(signal)
+    floor, peak = np.percentile(db, 10), np.percentile(db, 95)
+    return db > max(floor + SPEECH_ABOVE_FLOOR_DB, peak - SPEECH_BELOW_PEAK_DB)
+
+
 def ltas(mel: np.ndarray) -> np.ndarray:
     return mel.mean(axis=0)
