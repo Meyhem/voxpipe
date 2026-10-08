@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-Design phase: no code yet. The two specs in `design/` are the source of truth. Read them before building anything, and cite their IDs (R-xx, C-xx, N-xx, D-xx, K-xx, A-xx) in commits and discussion.
+Implementation in progress (plans in `docs/superpowers/plans/`). The two specs in `design/` are the source of truth. Read them before building anything, and cite their IDs (R-xx, C-xx, N-xx, D-xx, K-xx, A-xx) in commits and discussion.
 
 - `design/domain.md`: business rules (R-01…R-26). What the tool does, its commands, and edge cases.
 - `design/tech-spec-voxpipe.md`: architecture. Constraints C-xx, quality targets N-xx, decisions D-xx, risks K-xx, assumptions A-xx.
@@ -24,7 +24,10 @@ A Python CLI for Linux and PipeWire. It applies a real-time voice effect chain (
 - Run the tool: `uv run voxpipe <subcommand>`. It runs from the repo; there is no packaging (C-03).
 - External tools assumed present: `pw-cli`, `pw-dump`, `pw-record`, `pw-play`, `ffmpeg`. `pactl` is **not** available (C-04).
 
-Update this section with the real build, lint and test commands once the project is scaffolded.
+- Install deps: `uv sync`
+- Tests: `uv run pytest` (single test: `uv run pytest tests/test_chain.py::test_name`)
+- Lint: `uv run ruff check` (add `--fix` for import order)
+- Regenerate the golden render after an intentional engine change: `uv run python scripts/update_golden.py`
 
 ## Architecture essentials
 
