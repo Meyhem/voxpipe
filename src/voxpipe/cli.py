@@ -7,10 +7,10 @@ import sys
 from collections.abc import Sequence
 
 from voxpipe import __version__
-from voxpipe.commands import devices, render, run
+from voxpipe.commands import devices, render, run, tune
 from voxpipe.errors import VoxpipeError
 
-COMMANDS: tuple = (devices, run, render)
+COMMANDS: tuple = (devices, run, tune, render)
 
 
 def build_parser() -> argparse.ArgumentParser:
