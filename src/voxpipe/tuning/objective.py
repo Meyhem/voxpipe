@@ -14,7 +14,7 @@ from voxpipe.tuning.align import cosine_cost, dtw_path
 from voxpipe.tuning.features import frame_db, log_mel, ltas, pitch, speech_frames
 from voxpipe.tuning.samples import SamplePair
 
-OBJECTIVE_VERSION = 3  # bump whenever scoring changes; stored in profile provenance
+OBJECTIVE_VERSION = 4  # bump whenever scoring changes; stored in profile provenance
 LENGTH_MISMATCH_TOLERANCE = 0.30  # R-12 (A-03)
 W_MEL, W_PITCH, W_LTAS, W_FLOOR = 1.0, 0.5, 0.5, 0.5
 DB_UNIT = 10.0  # spectral distances are measured in units of 10 dB
@@ -69,12 +69,15 @@ def prepare_pair(pair: SamplePair) -> tuple[PairData, list[str]]:
 
 
 def pair_distance(processed: np.ndarray, data: PairData) -> float:
-    mel = log_mel(processed)
-    d_mel = np.mean(np.abs(mel[data.path_ref] - data.target_mel[data.path_tgt])) / DB_UNIT
+    mel = log_mel(processed)[data.path_ref]
+    # A target's recording volume is arbitrary: remove the overall level difference so
+    # only spectral shape and its movement are scored, never loudness (objective v4).
+    mel = mel - np.mean(mel - data.target_mel[data.path_tgt])
+    d_mel = np.mean(np.abs(mel - data.target_mel[data.path_tgt])) / DB_UNIT
 
     d_pitch = pitch_distance(pitch(processed)[data.path_ref], data.target_f0[data.path_tgt])
 
-    d_ltas = np.mean(np.abs(ltas(mel[data.path_ref]) - data.target_ltas)) / DB_UNIT
+    d_ltas = np.mean(np.abs(ltas(mel) - data.target_ltas)) / DB_UNIT
     return float(
         W_MEL * d_mel + W_PITCH * d_pitch + W_LTAS * d_ltas + W_FLOOR * floor_lift(processed, data)
     )
@@ -107,7 +110,7 @@ def pitch_distance(f0_proc: np.ndarray, f0_tgt: np.ndarray) -> float:
     return on_voiced + 0.5 * on_unvoiced
 
 
-def _compensate_latency(processed: np.ndarray, latency: int) -> np.ndarray:
+def compensate_latency(processed: np.ndarray, latency: int) -> np.ndarray:
     if latency <= 0:
         return processed
     return np.concatenate([processed[latency:], np.zeros(latency, dtype=np.float32)])
@@ -117,7 +120,7 @@ def chain_distance(entries: Sequence[ChainEntry], pairs: Sequence[PairData]) -> 
     chain = Chain(entries)
     total = 0.0
     for data in pairs:
-        processed = _compensate_latency(chain.process_signal(data.reference), chain.latency_samples)
+        processed = compensate_latency(chain.process_signal(data.reference), chain.latency_samples)
         total += pair_distance(processed, data)
     return total / len(pairs)
 

@@ -234,6 +234,8 @@ Not applicable beyond the following:
 - **D-06 — Tuning objective: DTW-aligned spectral distance on paired speech.**
   - The target and the unprocessed reference are aligned once with dynamic time warping on log-mel/MFCC features. Effects in the chain don't change timing, so the alignment can be reused.
   - Each candidate's processed reference is scored on that fixed alignment with a weighted mix of three distances: frame-wise log-mel, pitch contour, and long-term average spectrum.
+  - Overall level is not scored. The mean dB difference between processed and target over the scored frames is removed before the spectral distances (objective v4, 2026-10-08). A target's recording volume is arbitrary, and scoring it made the search chase loudness, up to clipping.
+  - After the search, a trailing `gain` is set so processed speech is as loud as the user's own reference. This is a pure level change, so the score is unchanged.
   - The result is reported as a 0–100 similarity score.
 
   *Because:* "Speech as similar as possible to the target" (interview, round 2) needs moment-by-moment comparison. Reusing the alignment keeps each evaluation cheap.
@@ -241,6 +243,8 @@ Not applicable beyond the following:
   *Reversibility:* Two-way. The score definition is versioned in provenance.
 
 - **D-07 — Optimiser: seeded CMA-ES over normalised parameters, with evaluations spread across all CPU cores.**
+  - CMA-ES follows its population mean, so a lucky early candidate can stay unbeaten for a long time. After 15 generations without a new best (or when CMA-ES stops on its own), the search restarts around the best point with a narrower step (σ 0.15) and the next seed (`seed + restart`). (2026-10-08.)
+
   *Because:* There are 20–40 continuous parameters, the objective is noisy and has no gradient, and the budget is minutes (C-09). Seeding and evaluating in a fixed order make it deterministic (N-06).
   *Rejected:* grid or random search (too weak at this many parameters); gradient-based search through differentiable DSP (much heavier; the GPU isn't needed).
   *Reversibility:* Two-way.

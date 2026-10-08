@@ -26,13 +26,20 @@ def test_identical_audio_scores_near_100():
     assert similarity(chain_distance(default_entries(), [data])) > 97.0
 
 
-def test_matching_gain_beats_identity():
+def test_overall_level_is_free():
+    # A target's recording volume is arbitrary, so only timbre is scored (objective v4).
     reference = voice_like(1.0)
     target = reference * np.float32(0.25)  # target is 12 dB quieter
     data = prepare_pair_from_arrays("a", reference, target)
-    identity = chain_distance([ChainEntry("gain", {"gain_db": 0.0})], [data])
-    matched = chain_distance([ChainEntry("gain", {"gain_db": -12.04})], [data])
-    assert matched < 0.2 * identity
+    for gain_db in (-12.04, 0.0, 12.0):
+        assert chain_distance([ChainEntry("gain", {"gain_db": gain_db})], [data]) < 0.01
+
+
+def test_spectral_shape_still_counts():
+    reference = voice_like(1.0)
+    data = prepare_pair_from_arrays("a", reference, reference * np.float32(0.25))
+    tilted = chain_distance([ChainEntry("filter", {"highpass_hz": 1000.0, "lowpass_hz": 20000.0})], [data])
+    assert tilted > 0.2
 
 
 def test_pitch_mismatch_is_penalised():
@@ -79,7 +86,7 @@ def test_pitch_distance_penalises_dropped_voicing():
 def test_objective_version_bumped():
     from voxpipe.tuning.objective import OBJECTIVE_VERSION
 
-    assert OBJECTIVE_VERSION == 3
+    assert OBJECTIVE_VERSION == 4
 
 
 def _with_pauses(voice: np.ndarray, floor: float, seed: int = 0) -> np.ndarray:
