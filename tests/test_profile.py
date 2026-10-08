@@ -4,8 +4,17 @@ from pathlib import Path
 
 import pytest
 
+from voxpipe import profile as profile_module
 from voxpipe.engine.entry import ChainEntry
-from voxpipe.profile import ProfileError, Provenance, parse_profile, to_dict
+from voxpipe.profile import (
+    ProfileError,
+    Provenance,
+    load_profile,
+    parse_profile,
+    resolve_profile_path,
+    save_profile,
+    to_dict,
+)
 
 FIXTURE = Path(__file__).parent / "data" / "mechanicus.json"
 
@@ -97,3 +106,55 @@ def test_missing_provenance_field(data):
 def test_empty_chain_rejected(data):
     data["chain"] = []
     assert "profile.chain" in error_for(data)
+
+
+def test_load_fixture():
+    assert load_profile(FIXTURE).name == "mechanicus-fixture"
+
+
+def test_load_missing_file(tmp_path):
+    with pytest.raises(ProfileError, match="profile not found"):
+        load_profile(tmp_path / "nope.json")
+
+
+def test_load_invalid_json(tmp_path):
+    path = tmp_path / "bad.json"
+    path.write_text("{not json")
+    with pytest.raises(ProfileError, match="invalid JSON"):
+        load_profile(path)
+
+
+def test_load_error_is_prefixed_with_path(tmp_path, data):
+    data["version"] = 9
+    path = tmp_path / "future.json"
+    path.write_text(json.dumps(data))
+    with pytest.raises(ProfileError, match=str(path)):
+        load_profile(path)
+
+
+def test_save_then_load_round_trip(tmp_path):
+    original = load_profile(FIXTURE)
+    path = tmp_path / "sub" / "copy.json"
+    save_profile(original, path)
+    assert load_profile(path) == original
+    assert list(path.parent.iterdir()) == [path]  # no temp file left behind
+
+
+def test_failed_save_keeps_old_file(tmp_path, monkeypatch):
+    path = tmp_path / "keep.json"
+    path.write_text("old")
+
+    def explode(*args, **kwargs):
+        raise RuntimeError("disk full")
+
+    monkeypatch.setattr(profile_module.json, "dump", explode)
+    with pytest.raises(RuntimeError):
+        save_profile(load_profile(FIXTURE), path)
+    assert path.read_text() == "old"
+    assert list(tmp_path.iterdir()) == [path]
+
+
+def test_resolve_profile_path(tmp_path):
+    assert resolve_profile_path("robot", tmp_path) == tmp_path / "robot.json"
+    assert resolve_profile_path("robot.json", tmp_path) == Path("robot.json")
+    assert resolve_profile_path("dir/robot", tmp_path) == Path("dir/robot")

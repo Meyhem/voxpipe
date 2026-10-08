@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import json
+import os
+import tempfile
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from functools import cache
+from pathlib import Path
 
 from jsonschema import Draft202012Validator
 from jsonschema.exceptions import best_match
@@ -136,3 +140,41 @@ def to_dict(profile: Profile) -> dict:
         },
         "chain": [{"effect": e.effect, "params": dict(e.params)} for e in profile.chain],
     }
+
+
+def load_profile(path: Path) -> Profile:
+    try:
+        text = path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        raise ProfileError(f"{path}: profile not found") from None
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise ProfileError(f"{path}: invalid JSON: {exc}") from None
+    try:
+        return parse_profile(data)
+    except ProfileError as exc:
+        raise ProfileError(f"{path}: {exc}") from None
+
+
+def save_profile(profile: Profile, path: Path) -> None:
+    """Write atomically: a crash or Ctrl+C never leaves a truncated profile."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp_name = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            json.dump(to_dict(profile), fh, indent=2)
+            fh.write("\n")
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(tmp_name, path)
+    except BaseException:
+        Path(tmp_name).unlink(missing_ok=True)
+        raise
+
+
+def resolve_profile_path(arg: str, profiles_dir: Path) -> Path:
+    candidate = Path(arg)
+    if candidate.suffix == ".json" or len(candidate.parts) > 1:
+        return candidate
+    return profiles_dir / f"{arg}.json"
