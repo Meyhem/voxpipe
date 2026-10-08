@@ -213,6 +213,13 @@ Not applicable beyond the following:
   *Because:* C-04. It's the simplest robust way to target exact nodes from Python, and a child exiting is a clean "device gone" signal.
   *Rejected:* PortAudio/sounddevice (can't target specific PipeWire nodes cleanly); native libpipewire bindings (immature in Python, rejected in C-04).
   *Reversibility:* Two-way, contained in the device layer. **Revisit if N-01 is missed** (K-01).
+  *Spike 2026-10-08 (PipeWire 1.0.5, `scripts/spike_pipewire.py`):*
+  - The virtual node lingers after `pw-cli` exits. `pw-cli destroy` removes it.
+  - `pw-record --target <node.name> -` writes raw f32 with no header, and links to the virtual mic's `capture_MONO`.
+  - `pw-play --target <virtual mic name>` does **not** link: the stream falls back to the default sink. Start it with `--target 0` and a fixed `-P '{ node.name=… }'`, then link with `pw-link <stream>:output_MONO <node>:input_MONO`.
+  - `pw-play` needs `--volume 1.0`. Without it the stream came up with channel volume 0.185 (WirePlumber restored state), attenuating the voice by about 14 dB.
+  - Hop latency (write to `pw-play`, read from `pw-record`) is about 32 ms with `--latency 480` and about 10 ms with `--latency 120`.
+  - With `-P '{ node.dont-reconnect = true }'`, `pw-record` exits when its target is destroyed instead of moving to another device.
 
 - **D-04 — The profile stores an ordered chain of `{effect, params}` with a format version.**
   *Because:* New voice styles and hand-built chains should need no format change (interview, round 2).
@@ -297,7 +304,7 @@ Not confirmed by the user.
 - **A-01 — Latency target ≤ 50 ms end to end** (user said "do your best"). Revisit if Telegram calls feel laggy.
 - **A-02 — Tuning budget ≤ 10 minutes for ≤ 10 pairs of ≤ 10 s.** The user said "minutes" and "best match". Revisit if the match quality still improves well past 10 minutes.
 - **A-03 — R-12 length-mismatch warning threshold is ±30 %.**
-- **A-04 — The PipeWire node latency from `pw-record`/`pw-play` can be set to about 10 ms on this machine.** Verify in the first spike (K-01).
+- **A-04 — The PipeWire node latency from `pw-record`/`pw-play` can be set to about 10 ms on this machine.** **Verified 2026-10-08:** a hop of about 10 ms with `--latency 120` (see D-03). Not yet measured: mic capture latency and the full chain end to end.
 - **A-05 — Mono is sufficient** for both input and the virtual mic.
 
 ---
